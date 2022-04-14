@@ -1,5 +1,7 @@
 # Do NOT upload data file
 *.json
+*.txt
+*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
