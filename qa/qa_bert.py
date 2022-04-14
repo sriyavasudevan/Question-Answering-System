@@ -6,6 +6,9 @@ from transformers import BertTokenizer
 
 
 def read_data(filename):
+    """
+    This method is for reading in the data
+    """
     sample_text = pd.read_json(filename)
     return sample_text
 
