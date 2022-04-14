@@ -45,6 +45,9 @@ def question_answer(question, context, question_history):
 
 
 def begin_conversation(inital_context):
+    '''
+    This method output instructions to begin the conversation
+    '''
     question_history = []
     question = input("\nPlease enter your question: \n")
     question_history.append(question)
