@@ -14,6 +14,9 @@ def read_data(filename):
 
 
 def question_answer(question, context, question_history):
+    """
+    This is the main code for qa system
+    """
     inputs = tokenizer.encode_plus(question, context, add_special_tokens=True, return_tensors="pt")
     input_ids = inputs["input_ids"].tolist()[0]
 
