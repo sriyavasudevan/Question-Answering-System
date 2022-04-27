@@ -31,7 +31,7 @@ def question_answer(question, context, question_history):
     """
     inputs = tokenizer.encode_plus(question, context, add_special_tokens=True, return_tensors="pt")
     input_ids = inputs["input_ids"].tolist()[0]
-
+    
     text_tokens = tokenizer.convert_ids_to_tokens(input_ids)
     model_out = model(**inputs)
 
@@ -54,9 +54,44 @@ def question_answer(question, context, question_history):
 
     print("\nPredicted answer:\n{}".format(answer.capitalize()))
 
-    context = ''.join(question_history) + context
-    # print("Current context: " + context)
     
+    question_history = ''.join(question_history)
+    all_text = ''.join(question_history) + context
+    
+    
+    all_text_inputs = tokenizer.encode_plus(all_text, add_special_tokens=True, return_tensors="pt")
+    all_text_input_ids = all_text_inputs["input_ids"].tolist()[0]
+
+    all_text_text_tokens = tokenizer.convert_ids_to_tokens(all_text_input_ids)
+
+    question_history_inputs = tokenizer.encode_plus(question_history, add_special_tokens=True, return_tensors="pt")
+    question_history_input_ids = question_history_inputs["input_ids"].tolist()[0]
+
+    question_history_text_tokens = tokenizer.convert_ids_to_tokens(question_history_input_ids)
+    
+    # print(len(all_text_text_tokens))
+    if len(all_text_text_tokens) > 70:
+        tokens_over_limit = len(all_text_text_tokens) - 70
+        #print(tokens_over_limit)
+        tokens_to_remove = len(question_history_text_tokens) - tokens_over_limit - 1
+        #print(tokens_to_remove)
+        question_history = question_history_text_tokens[1:tokens_to_remove]
+        #print(question_history)
+        all_text = ' '.join(question_history) + context
+        print('All text before tokenization:', all_text)
+
+        '''
+        # This is to see how many tokens will be after the cut 
+         
+        all_text_inputs = tokenizer.encode_plus(all_text, add_special_tokens=True, return_tensors="pt")
+        all_text_input_ids = all_text_inputs["input_ids"].tolist()[0]
+
+        all_text_text_tokens = tokenizer.convert_ids_to_tokens(all_text_input_ids)
+
+        print('All text tokens after cut:', all_text_text_tokens)
+        print(len(all_text_text_tokens))
+        '''
+    # print("Current context: " + all_text)
     return context, answer
 
 
@@ -111,7 +146,7 @@ def begin_conversation(initial_context):
         """logging
         logging_list.append([question, ''.join(question_history), current_answer, str(time_taken_to_answer)])
         logging_df = pd.DataFrame(logging_list, columns=['Current Question', 'Question History', 'Predicted Answer', 'Time taken'])
-        file_io.write_data(logging_df)
+        file_io.write_data(loggisng_df)
         logging_list = []"""
 
         flag = True
@@ -138,7 +173,7 @@ model = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-
 tokenizer = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 
 # pick the context from dataset
-index = 10
+index = 0
 initial_text = file_io.read_data('sample_dataset.json')["text"][index]
 
 # checking the current environment type
@@ -147,13 +182,13 @@ print(platform.uname())
 
 # print the initial context and start conversation
 print("The initial context: " + initial_text)
-begin_conversation(initial_text)
+# begin_conversation(initial_text)
 
-"""
+
 # use this block of code to be able to feed questions directly instead of typing each time
 # data file contains text and list of questions
 test_df = file_io.read_data('test_file_to_show.json')
 for i in range(0, test_df.shape[0]):
     initial_context = test_df["data"][i]["text"]
     q_list = test_df["data"][i]["questions"]
-    test_conversation(initial_context, q_list)"""
+    test_conversation(initial_context, q_list)
