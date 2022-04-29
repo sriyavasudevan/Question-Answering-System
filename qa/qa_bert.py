@@ -224,8 +224,8 @@ print("The initial context: " + initial_text)
 
 # use this block of code to be able to feed questions directly instead of typing each time
 # data file contains text and list of questions
-"""test_df = file_io.read_data('test_file_to_show.json')
+test_df = file_io.read_data('test_file_to_show.json')
 # for i in range(0, test_df.shape[0]):
 original_context = test_df["data"][3]["text"]
 q_list = test_df["data"][3]["questions"]
-test_conversation(original_context, q_list)"""
+test_conversation(original_context, q_list)
