@@ -21,26 +21,38 @@ def get_time(fun, *args, **kwargs):
     return time() - start, res
 
 
-def question_answer(question, context, question_history):
+def get_tokens_helper(*args):
     """
-    This is the main code for qa system - uses BERT
-    :param question: current question being asked
-    :param context: current context used
-    :param question_history: list of questions previously asked
-    :return: current context and the predicted answer
+    a helper method that will get the tokens for the text passed in
+    :param args: variable argument where either question and context OR just context will be passed
+    :return: inputs, input_ids and text_tokens corresponding to the input context
     """
-    inputs = tokenizer.encode_plus(question, context, add_special_tokens=True, return_tensors="pt")
+    if len(args) == 2:
+        question = args[0]
+        context = args[1]
+        inputs = tokenizer.encode_plus(question, context, add_special_tokens=True, return_tensors="pt")
+    elif len(args) == 1:
+        to_be_tokenized = args[0]
+        inputs = tokenizer.encode_plus(to_be_tokenized, add_special_tokens=True, return_tensors="pt")
+    else:
+        print("error in tokenization")
+
     input_ids = inputs["input_ids"].tolist()[0]
-    
     text_tokens = tokenizer.convert_ids_to_tokens(input_ids)
-    model_out = model(**inputs)
+    return inputs, input_ids, text_tokens
 
-    # reconstructing the answer
-    answer_start = torch.argmax(model_out.start_logits)
-    answer_end = torch.argmax(model_out.end_logits)
 
+def get_answer_helper(answer_start, answer_end, input_ids, text_tokens):
+    """
+    a helper method that gets the answer based on the answer starting and ending indices, also checks
+    for any ## and formats the answer nicely
+    :param answer_start: starting index of answer
+    :param answer_end: ending index of answer
+    :param input_ids: input ids from the context
+    :param text_tokens: tokenized version of the text sent into BERT
+    :return: answer in string format
+    """
     answer = tokenizer.convert_tokens_to_string(tokenizer.convert_ids_to_tokens(input_ids[answer_start:answer_end]))
-
     if answer_end >= answer_start:
         answer = text_tokens[answer_start]
         for i in range(answer_start + 1, answer_end + 1):
@@ -49,49 +61,73 @@ def question_answer(question, context, question_history):
             else:
                 answer += " " + text_tokens[i]
 
+    return answer
+
+
+def question_answer(question, context, question_history):
+    """
+    This is the main code for qa system - uses BERT
+    :param question: current question being asked
+    :param context: current context used
+    :param question_history: list of questions previously asked
+    :return: current context and the predicted answer
+    """
+
+    # using a helper method to get tokens
+    inputs, input_ids, text_tokens = get_tokens_helper(question, context)
+
+    # sending tokens to BERT model
+    model_out = model(**inputs)
+
+    # getting starting ending indices for predicted answer
+    answer_start = torch.argmax(model_out.start_logits)
+    answer_end = torch.argmax(model_out.end_logits)
+
+    # using a helper method to check for the answer
+    answer = get_answer_helper(answer_start, answer_end, input_ids, text_tokens)
+
+    # checking for a null answer
     if answer.startswith("[CLS]") or answer == " ":
         answer = "Unable to find the answer to your question."
-
     print("\nPredicted answer:\n{}".format(answer.capitalize()))
 
-    
-    question_history = ''.join(question_history)
-    all_text = ''.join(question_history) + context
-    
-    
-    all_text_inputs = tokenizer.encode_plus(all_text, add_special_tokens=True, return_tensors="pt")
-    all_text_input_ids = all_text_inputs["input_ids"].tolist()[0]
+    # strings of question_history and the full context
+    question_history_str = ''.join(question_history)
+    # all_text = ''.join(question_history) + context
+    context_str = ''.join(question_history) + context
 
-    all_text_text_tokens = tokenizer.convert_ids_to_tokens(all_text_input_ids)
+    # finding number of tokens in question_history and the full context
+    all_text_inputs, all_text_input_ids, all_text_text_tokens = get_tokens_helper(context_str)
+    question_history_inputs, question_history_input_ids, question_history_text_tokens = get_tokens_helper(question_history_str)
 
-    question_history_inputs = tokenizer.encode_plus(question_history, add_special_tokens=True, return_tensors="pt")
-    question_history_input_ids = question_history_inputs["input_ids"].tolist()[0]
+    # checking if the length of the context tokens is over 512, since BERT has a restriction
+    if len(all_text_text_tokens) <= BERT_TOKEN_LIMIT:
+        context = context_str
+    else:
 
-    question_history_text_tokens = tokenizer.convert_ids_to_tokens(question_history_input_ids)
-    
-    # print(len(all_text_text_tokens))
-    if len(all_text_text_tokens) > 70:
-        tokens_over_limit = len(all_text_text_tokens) - 70
-        #print(tokens_over_limit)
-        tokens_to_remove = len(question_history_text_tokens) - tokens_over_limit - 1
-        #print(tokens_to_remove)
-        question_history = question_history_text_tokens[1:tokens_to_remove]
-        #print(question_history)
-        all_text = ' '.join(question_history) + context
-        print('All text before tokenization:', all_text)
+        # tokenized version of the original plain context without question history
+        original_context_t = get_tokens_helper(original_context)
+        original_context_tokens = original_context_t[2]
+        # original_context_tokens.pop(0) # removing CLS token
 
-        '''
-        # This is to see how many tokens will be after the cut 
-         
-        all_text_inputs = tokenizer.encode_plus(all_text, add_special_tokens=True, return_tensors="pt")
-        all_text_input_ids = all_text_inputs["input_ids"].tolist()[0]
+        # how many tokens are over limit
+        tokens_over_limit = len(all_text_text_tokens) - BERT_TOKEN_LIMIT
 
-        all_text_text_tokens = tokenizer.convert_ids_to_tokens(all_text_input_ids)
+        # tokens to be kept in question history
+        tokens_to_keep = abs(len(question_history_text_tokens) - tokens_over_limit - 1)
 
-        print('All text tokens after cut:', all_text_text_tokens)
-        print(len(all_text_text_tokens))
-        '''
-    # print("Current context: " + all_text)
+        # truncated question history tokens + removing CLS token in the front
+        question_history_text_tokens = question_history_text_tokens[1:tokens_to_keep]
+
+        # add the new question history back to the original context
+        truncated_all_context_tokens = question_history_text_tokens + original_context_tokens
+
+        # convert tokens back to proper string
+        new_truncated_context = tokenizer.convert_tokens_to_string(truncated_all_context_tokens)
+
+        context = new_truncated_context
+
+    print("Current context: " + context)
     return context, answer
 
 
@@ -103,7 +139,7 @@ def test_conversation(initial_context, question_list):
     :return: nothing
     """
     question_history = []
-    logging_list =[]
+    logging_list = []
     text = initial_context
 
     for i, question in enumerate(question_list):
@@ -115,7 +151,8 @@ def test_conversation(initial_context, question_list):
 
         # logging
         logging_list.append([question, ''.join(question_history), current_answer, str(time_taken_to_answer)])
-        logging_df = pd.DataFrame(logging_list, columns=['Current Question', 'Question History', 'Predicted Answer', 'Time taken'])
+        logging_df = pd.DataFrame(logging_list,
+                                  columns=['Current Question', 'Question History', 'Predicted Answer', 'Time taken'])
         if i == 0:
             file_io.write_data(logging_df, first_time=True)
         else:
@@ -140,7 +177,6 @@ def begin_conversation(initial_context):
         # checking the time taken by each call
         time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, question_history)
         print("Time taken: " + str(time_taken_to_answer))
-        # current_context = qa_returned_elements[0]
         current_answer = qa_returned_elements[1]
 
         """logging
@@ -171,6 +207,7 @@ def begin_conversation(initial_context):
 # initialize the model and the tokenizer
 model = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 tokenizer = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
+BERT_TOKEN_LIMIT = 512
 
 # pick the context from dataset
 index = 0
@@ -187,8 +224,8 @@ print("The initial context: " + initial_text)
 
 # use this block of code to be able to feed questions directly instead of typing each time
 # data file contains text and list of questions
-test_df = file_io.read_data('test_file_to_show.json')
-for i in range(0, test_df.shape[0]):
-    initial_context = test_df["data"][i]["text"]
-    q_list = test_df["data"][i]["questions"]
-    test_conversation(initial_context, q_list)
+"""test_df = file_io.read_data('test_file_to_show.json')
+# for i in range(0, test_df.shape[0]):
+original_context = test_df["data"][3]["text"]
+q_list = test_df["data"][3]["questions"]
+test_conversation(original_context, q_list)"""
