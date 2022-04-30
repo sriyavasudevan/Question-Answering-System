@@ -64,17 +64,38 @@ def get_answer_helper(answer_start, answer_end, input_ids, text_tokens):
     return answer
 
 
-def question_answer(question, context, question_history):
+def map_question_to_num_tokens(question, map):
+    """
+    a helper method to map the question to number of tokens in that question
+    :param question: the question to be tokenized
+    :param map: current map of question to number of tokens
+    :return: map of question to number of tokens
+    """
+
+    # need to get the number of tokens in each question
+    question_inputs, question_input_ids, question_text_tokens = get_tokens_helper(question)
+
+    # key - question and value - number of tokens in the current question
+    map[question] = len(question_text_tokens)
+
+    return map
+
+
+def question_answer(question, context, question_history, map):
     """
     This is the main code for qa system - uses BERT
     :param question: current question being asked
     :param context: current context used
     :param question_history: list of questions previously asked
-    :return: current context and the predicted answer
+    :param map: current map of question to number of tokens
+    :return: current context, current question history, predicted answer
     """
 
     # using a helper method to get tokens
     inputs, input_ids, text_tokens = get_tokens_helper(question, context)
+
+    """ Using below line to test out removing entire questions from question history """
+    map = map_question_to_num_tokens(question, map)
 
     # sending tokens to BERT model
     model_out = model(**inputs)
@@ -94,11 +115,12 @@ def question_answer(question, context, question_history):
     # strings of question_history and the full context
     question_history_str = ''.join(question_history)
     # all_text = ''.join(question_history) + context
-    context_str = ''.join(question_history) + context
+    context_str = ''.join(question_history) + original_context
 
     # finding number of tokens in question_history and the full context
     all_text_inputs, all_text_input_ids, all_text_text_tokens = get_tokens_helper(context_str)
-    question_history_inputs, question_history_input_ids, question_history_text_tokens = get_tokens_helper(question_history_str)
+    question_history_inputs, question_history_input_ids, question_history_text_tokens = get_tokens_helper(
+        question_history_str)
 
     # checking if the length of the context tokens is over 512, since BERT has a restriction
     if len(all_text_text_tokens) <= BERT_TOKEN_LIMIT:
@@ -113,6 +135,9 @@ def question_answer(question, context, question_history):
         # how many tokens are over limit
         tokens_over_limit = len(all_text_text_tokens) - BERT_TOKEN_LIMIT
 
+        """
+        # Old code block to remove tokens over limit instead of whole questions
+        
         # tokens to be kept in question history
         tokens_to_keep = abs(len(question_history_text_tokens) - tokens_over_limit - 1)
 
@@ -126,16 +151,38 @@ def question_answer(question, context, question_history):
         new_truncated_context = tokenizer.convert_tokens_to_string(truncated_all_context_tokens)
 
         context = new_truncated_context
+        """
+
+        # below code checks how many questions needs to be removed based on the amount of tokens over limit
+        count = 0
+        total_tokens = 0
+        for i in range(0, len(question_history)):
+            current_q = question_history[i].strip(' ')
+            current_num = map.get(current_q)
+            total_tokens += current_num
+            if total_tokens < tokens_over_limit:
+                count += 1
+                continue
+            else:
+                break
+
+        # removes questions from question history
+        question_history = question_history[count + 1:]
+
+        new_truncated_history_str = ''.join(question_history)
+        new_truncated_context_with_question_history = new_truncated_history_str + original_context
+        context = new_truncated_context_with_question_history
 
     print("Current context: " + context)
-    return context, answer
+    return context, question_history, answer
 
 
-def test_conversation(initial_context, question_list):
+def test_conversation(initial_context, question_list, map):
     """
     Can use this method to directly pass in a list of questions instead of typing it in
     :param initial_context: the initial piece of context
     :param question_list: list of questions you want to ask
+    :param map current map of question to number of tokens
     :return: nothing
     """
     question_history = []
@@ -146,8 +193,10 @@ def test_conversation(initial_context, question_list):
         """if question + " " not in question_history:
             question_history.append(question + " ")"""
         question_history.append(question + " ")
-        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, question_history)
-        current_answer = qa_returned_elements[1]
+        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, question_history, map)
+        text = qa_returned_elements[0]
+        question_history = qa_returned_elements[1]
+        current_answer = qa_returned_elements[2]
 
         # logging
         logging_list.append([question, ''.join(question_history), current_answer, str(time_taken_to_answer)])
@@ -160,10 +209,11 @@ def test_conversation(initial_context, question_list):
         logging_list = []
 
 
-def begin_conversation(initial_context):
+def begin_conversation(initial_context, map):
     """
     This method output instructions to begin the conversation
     :param initial_context: the inital piece of text
+    :param map current map of question to number of tokens
     :return: nothing
     """
     question_history = []
@@ -175,14 +225,14 @@ def begin_conversation(initial_context):
 
     while True:
         # checking the time taken by each call
-        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, question_history)
+        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, question_history, map)
         print("Time taken: " + str(time_taken_to_answer))
         current_answer = qa_returned_elements[1]
 
         """logging
         logging_list.append([question, ''.join(question_history), current_answer, str(time_taken_to_answer)])
         logging_df = pd.DataFrame(logging_list, columns=['Current Question', 'Question History', 'Predicted Answer', 'Time taken'])
-        file_io.write_data(loggisng_df)
+        file_io.write_data(logging_df)
         logging_list = []"""
 
         flag = True
@@ -208,24 +258,27 @@ def begin_conversation(initial_context):
 model = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 tokenizer = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 BERT_TOKEN_LIMIT = 512
-
-# pick the context from dataset
-index = 0
-initial_text = file_io.read_data('sample_dataset.json')["text"][index]
+map_qns_to_num_tokens = {}
 
 # checking the current environment type
 print("Current environment: ")
 print(platform.uname())
 
-# print the initial context and start conversation
-print("The initial context: " + initial_text)
-# begin_conversation(initial_text)
+"""
+# pick the context from dataset
+index = 11
+original_context = file_io.read_data("sample_dataset.json")["text"][index]
 
+# print the initial context and start conversation
+print("The initial context: " + original_context)
+begin_conversation(original_context, map_qns_to_num_tokens)
+"""
 
 # use this block of code to be able to feed questions directly instead of typing each time
 # data file contains text and list of questions
 test_df = file_io.read_data('test_file_to_show.json')
+
 # for i in range(0, test_df.shape[0]):
-original_context = test_df["data"][3]["text"]
-q_list = test_df["data"][3]["questions"]
-test_conversation(original_context, q_list)
+original_context = test_df["data"][5]["text"]
+q_list = test_df["data"][5]["questions"]
+test_conversation(original_context, q_list, map_qns_to_num_tokens)
