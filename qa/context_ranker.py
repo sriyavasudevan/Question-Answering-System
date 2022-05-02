@@ -23,6 +23,12 @@ def get_time(fun, *args, **kwargs):
 
 
 def segment_file(file, max_file_length=450):
+    """
+
+    :param file:
+    :param max_file_length:
+    :return:
+    """
     # List containing full and segmented docs
     segmented_file = []
 
@@ -43,34 +49,52 @@ def segment_file(file, max_file_length=450):
 
 
 def get_top_k_file(query, file_df, k=2):
+    """
+
+    :param query:
+    :param file_df:
+    :param k:
+    :return:
+    """
     # Initialize a vectorizer that removes English stop words
     vectorizer = TfidfVectorizer(analyzer="word", stop_words='english')
 
+    # convert the df into a file
     file_list = file_df['text'].to_list()
 
-    # Create a corpus of query and documents and convert to TFIDF vectors
-    query_and_file = [query] + file_df
-    list_q_file = query_and_file['text'].to_list()
-    matrix = vectorizer.fit_transform(list_q_file)
+    # Add the question to the front of the list
+    query_and_file = [query] + file_list
+
+    # create a TF-IDF matrix between each document and the vocab
+    matrix = vectorizer.fit_transform(query_and_file)
 
     # Holds our cosine similarity scores
     scores = []
 
     # The first vector is our query text, so compute the similarity of our query against all document vectors
-    for i in range(1, len(list_q_file)):
-        scores.append(cosine_similarity(matrix[0], matrix[i])[0][0])
+    query_text_vectorized = matrix[0]
+    for i in range(1, len(query_and_file)):
+        cos_sim_matrix = cosine_similarity(matrix[i], query_text_vectorized)
+        cos_sim = cos_sim_matrix[0][0]
+        scores.append(cos_sim)
 
-    # enum_obj = enumerate(scores)
-    # test_list = list(enum_obj)
-    # Sort list of scores and return the top k highest scoring documents
+    # sort the list in descending order after enumerating it
     sorted_list = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
     top_file_indices = [x[0] for x in sorted_list[:k]]
+
+    # the file with the highest score
     top_file = [file_list[x] for x in top_file_indices]
 
     return top_file
 
 
 def question_answer(question, text):
+    """
+
+    :param question:
+    :param text:
+    :return:
+    """
     # tokenize question and text in ids as a pair
     input_ids = tokenizer.encode(question, text)
 
@@ -120,30 +144,36 @@ tokenizer = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking
 
 text_df = pd.read_json('ranker_text_file.json')
 
-# question = input("\nPlease enter your question: \n")
-question = "What are the trip wires?"
+question = input("\nPlease enter your question: \n")
 
-text = text_df
-candidate_file = get_top_k_file(question, text, 3)
+# this while loop just finds out which documents are in the top 3
 
 while True:
-    for i in candidate_file:
-        question_answer(question, i)
-        print("Reference Document: ", i)
-        print("/")
 
-        flag = True
-        flag_N = False
+    # candidate_file = get_top_k_file(question, text_df, 3)
+    time_taken_to_rank, candidate_file = get_time(get_top_k_file, question, text_df, 3)
 
-        while flag:
-            response = input("\nDo you want to ask another question based on this text (Y/N)? ")
-            if response[0] == "Y":
-                question = input("\nPlease enter your question: \n")
-                flag = False
-            elif response[0] == "N":
-                print("\nBye!")
-                flag = False
-                flag_N = True
+    # for i in candidate_file:
 
-            if flag_N:
-                break
+    # question_answer(question, candidate_file)
+    print("Top 3 Reference Document:\n", candidate_file[0] + "\n" + candidate_file[1]
+          + "\n" + candidate_file[2])
+
+    # time taken to rank the context
+    print("Time taken to rank: " + str(time_taken_to_rank))
+
+    flag = True
+    flag_N = False
+
+    while flag:
+        response = input("\nDo you want to ask another question (Y/N)? ")
+        if response[0] == "Y":
+            question = input("\nPlease enter your question: \n")
+            flag = False
+        elif response[0] == "N":
+            print("\nBye!")
+            flag = False
+            flag_N = True
+
+        if flag_N:
+            break
