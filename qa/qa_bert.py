@@ -109,6 +109,18 @@ def get_confidence(start_logits, end_logits):
 
     return confident
 
+def get_slide_answer(context):
+    """
+    This method can help to get slide number from input context
+    :param context: input context
+    """
+    split_content = context.split(r' ')
+    if split_content[3].isnumeric() is False:
+        slide_number = 'Slide' + split_content[1]
+    else:
+        slide_number = 'Slide' + split_content[1] + split_content[2] + split_content[3]
+    return slide_number
+
 
 def question_answer(question, context, question_history, map):
     """
