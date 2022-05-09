@@ -1,5 +1,5 @@
 import pandas as pd
-import numpy as np
+#import numpy as np
 import torch
 from transformers import BertForQuestionAnswering
 from transformers import BertTokenizer
@@ -109,16 +109,16 @@ def get_confidence(start_logits, end_logits):
 
     return confident
 
-def get_slide_answer(context):
+def get_slide_number(context):
     """
     This method can help to get slide number from input context
-    :param context: input context
+    :param context: input original context
     """
     split_content = context.split(r' ')
     if split_content[3].isnumeric() is False:
-        slide_number = 'Slide' + split_content[1]
+        slide_number = ' ' + 'Slide' + ' ' + split_content[1]
     else:
-        slide_number = 'Slide' + split_content[1] + split_content[2] + split_content[3]
+        slide_number = ' ' + 'Slide' + ' ' + split_content[1] + split_content[2] + split_content[3]
     return slide_number
 
 
@@ -158,6 +158,8 @@ def question_answer(question, context, question_history, map):
     if answer.startswith("[CLS]") or answer == " " or answer == "":
         answer = "Unable to find the answer to your question."
     print("\nPredicted answer:\n{}".format(answer.capitalize()))
+    print("For more information, please go to" + get_slide_number(original_context))
+    
 
     # strings of question_history and the full context
     question_history_str = ''.join(question_history)
