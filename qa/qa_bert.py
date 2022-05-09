@@ -81,6 +81,35 @@ def map_question_to_num_tokens(question, map):
     return map
 
 
+def get_confidence(start_logits, end_logits):
+    """
+    This method will determine the confidence of the answer based on a threshold probability
+    :param start_logits: start logits
+    :param end_logits: end logits
+    :return: confident true or false
+    """
+    prob_dist_start = torch.round(torch.softmax(start_logits, dim=1), decimals=3)
+    prob_dist_end = torch.round(torch.softmax(end_logits, dim=1), decimals=3)
+
+    arg_start_index = torch.argmax(start_logits)
+    arg_end_index = torch.argmax(end_logits)
+
+    softm_start_index = torch.argmax(prob_dist_start)
+    softm_end_index = torch.argmax(prob_dist_end)
+
+    if arg_start_index == softm_start_index and arg_end_index == softm_end_index:
+
+        start_prob = prob_dist_start[0, softm_start_index]
+        end_prob = prob_dist_end[0, softm_end_index]
+
+        if start_prob >= 0.70 and end_prob >= 0.70:
+            confident = True
+        else:
+            confident = False
+
+    return confident
+
+
 def question_answer(question, context, question_history, map):
     """
     This is the main code for qa system - uses BERT
@@ -104,23 +133,26 @@ def question_answer(question, context, question_history, map):
     answer_start = torch.argmax(model_out.start_logits)
     answer_end = torch.argmax(model_out.end_logits)
 
-    # using a helper method to check for the answer
-    answer = get_answer_helper(answer_start, answer_end, input_ids, text_tokens)
+    # check the confidence of the answer, returns a boolean based on threshold
+    confident = get_confidence(model_out.start_logits, model_out.end_logits)
+
+    if not confident:
+        answer = ""
+    else:
+        # using a helper method to check for the answer
+        answer = get_answer_helper(answer_start, answer_end, input_ids, text_tokens)
 
     # checking for a null answer
-    if answer.startswith("[CLS]") or answer == " ":
+    if answer.startswith("[CLS]") or answer == " " or answer == "":
         answer = "Unable to find the answer to your question."
     print("\nPredicted answer:\n{}".format(answer.capitalize()))
 
     # strings of question_history and the full context
     question_history_str = ''.join(question_history)
-    # all_text = ''.join(question_history) + context
     context_str = ''.join(question_history) + original_context
 
     # finding number of tokens in question_history and the full context
     all_text_inputs, all_text_input_ids, all_text_text_tokens = get_tokens_helper(context_str)
-    question_history_inputs, question_history_input_ids, question_history_text_tokens = get_tokens_helper(
-        question_history_str)
 
     # checking if the length of the context tokens is over 512, since BERT has a restriction
     if len(all_text_text_tokens) <= BERT_TOKEN_LIMIT:
@@ -134,24 +166,6 @@ def question_answer(question, context, question_history, map):
 
         # how many tokens are over limit
         tokens_over_limit = len(all_text_text_tokens) - BERT_TOKEN_LIMIT
-
-        """
-        # Old code block to remove tokens over limit instead of whole questions
-        
-        # tokens to be kept in question history
-        tokens_to_keep = abs(len(question_history_text_tokens) - tokens_over_limit - 1)
-
-        # truncated question history tokens + removing CLS token in the front
-        question_history_text_tokens = question_history_text_tokens[1:tokens_to_keep]
-
-        # add the new question history back to the original context
-        truncated_all_context_tokens = question_history_text_tokens + original_context_tokens
-
-        # convert tokens back to proper string
-        new_truncated_context = tokenizer.convert_tokens_to_string(truncated_all_context_tokens)
-
-        context = new_truncated_context
-        """
 
         # below code checks how many questions needs to be removed based on the amount of tokens over limit
         count = 0
@@ -279,6 +293,6 @@ begin_conversation(original_context, map_qns_to_num_tokens)
 test_df = file_io.read_data('test_file_to_show.json')
 
 # for i in range(0, test_df.shape[0]):
-original_context = test_df["data"][5]["text"]
-q_list = test_df["data"][5]["questions"]
+original_context = test_df["data"][1]["text"]
+q_list = test_df["data"][1]["questions"]
 test_conversation(original_context, q_list, map_qns_to_num_tokens)
