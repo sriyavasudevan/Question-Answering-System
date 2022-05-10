@@ -223,8 +223,8 @@ def test_conversation(initial_context, question_list, map):
         question_history.append(question + " ")
         time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, question_history, map)
         text = qa_returned_elements[0]
-        question_history = qa_returned_elements[1]
         current_answer = qa_returned_elements[2]
+        question_history = qa_returned_elements[1] + list(current_answer)
 
         # logging
         logging_list.append([question, ''.join(question_history), current_answer, str(time_taken_to_answer)])
