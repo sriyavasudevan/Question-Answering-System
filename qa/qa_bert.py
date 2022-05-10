@@ -118,7 +118,7 @@ def get_slide_number(context):
     if split_content[3].isnumeric() is False:
         slide_number = ' ' + 'Slide' + ' ' + split_content[1]
     else:
-        slide_number = ' ' + 'Slide' + ' ' + split_content[1] + split_content[2] + split_content[3]
+        slide_number = ' ' + 'Slide' + ' ' + split_content[1] + ', ' + split_content[2] + ', ' + split_content[3]
     return slide_number
 
 
