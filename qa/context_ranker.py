@@ -24,10 +24,10 @@ def get_time(fun, *args, **kwargs):
 
 def segment_file(file, max_file_length=450):
     """
-
-    :param file:
-    :param max_file_length:
-    :return:
+    Separate the file to make sure max file length is under BERT limit
+    :param file: current file used
+    :param max_file_length: settled maximum file limit
+    :return: the split file
     """
     # List containing full and segmented docs
     segmented_file = []
@@ -48,13 +48,13 @@ def segment_file(file, max_file_length=450):
     return segmented_file
 
 
-def get_top_k_file(query, file_df, k=2):
+def get_top_k_file(question, file_df, k=2):
     """
-
-    :param query:
-    :param file_df:
-    :param k:
-    :return:
+    Apply TF-IDF method to get top k related file according to the question
+    :param question: the input question being asked
+    :param file_df: current collection of files
+    :param k: the number of returned files
+    :return: top k related file
     """
     # Initialize a vectorizer that removes English stop words
     vectorizer = TfidfVectorizer(analyzer="word", stop_words='english')
@@ -63,17 +63,17 @@ def get_top_k_file(query, file_df, k=2):
     file_list = file_df['text'].to_list()
 
     # Add the question to the front of the list
-    query_and_file = [query] + file_list
+    question_and_file = [question] + file_list
 
     # create a TF-IDF matrix between each document and the vocab
-    matrix = vectorizer.fit_transform(query_and_file)
+    matrix = vectorizer.fit_transform(question_and_file)
 
     # Holds our cosine similarity scores
     scores = []
 
     # The first vector is our query text, so compute the similarity of our query against all document vectors
     query_text_vectorized = matrix[0]
-    for i in range(1, len(query_and_file)):
+    for i in range(1, len(question_and_file)):
         cos_sim_matrix = cosine_similarity(matrix[i], query_text_vectorized)
         cos_sim = cos_sim_matrix[0][0]
         scores.append(cos_sim)
@@ -90,10 +90,10 @@ def get_top_k_file(query, file_df, k=2):
 
 def question_answer(question, text):
     """
-
-    :param question:
-    :param text:
-    :return:
+    Main method for qa system with BERT model (test)
+    :param question: current question being asked
+    :param text: current text used
+    :return: predicted answer
     """
     # tokenize question and text in ids as a pair
     input_ids = tokenizer.encode(question, text)
@@ -138,12 +138,12 @@ def question_answer(question, text):
     #     print("\nQuestion:\n{}".format(question.capitalize()))
     print("\nAnswer:\n{}".format(answer.capitalize()))
 
-
+# initialize the model and the tokenizer
 model = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 tokenizer = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
-
+# loading the text
 text_df = pd.read_json('ranker_text_file.json')
-
+# set the input question
 question = input("\nPlease enter your question: \n")
 
 # this while loop just finds out which documents are in the top 3
