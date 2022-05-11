@@ -107,7 +107,8 @@ def get_confidence(start_logits, end_logits):
         else:
             confident = False
 
-    return confident
+    return confident, start_prob, end_prob
+
 
 def get_slide_number(context):
     """
@@ -122,12 +123,12 @@ def get_slide_number(context):
     return slide_number
 
 
-def question_answer(question, context, question_history, map):
+def question_answer(question, context, history, map):
     """
     This is the main code for qa system - uses BERT
     :param question: current question being asked
     :param context: current context used
-    :param question_history: list of questions previously asked
+    :param history: list of questions previously asked
     :param map: current map of question to number of tokens
     :return: current context, current question history, predicted answer
     """
@@ -146,26 +147,30 @@ def question_answer(question, context, question_history, map):
     answer_end = torch.argmax(model_out.end_logits)
 
     # check the confidence of the answer, returns a boolean based on threshold
-    confident = get_confidence(model_out.start_logits, model_out.end_logits)
+    confidence_components = get_confidence(model_out.start_logits, model_out.end_logits)
+    start_prob = confidence_components[1]
+    end_prob = confidence_components[2]
 
-    if not confident:
+    """if not confident:
         answer = ""
     else:
-        # using a helper method to check for the answer
-        answer = get_answer_helper(answer_start, answer_end, input_ids, text_tokens)
+        """
+    # using a helper method to check for the answer
+    answer = get_answer_helper(answer_start, answer_end, input_ids, text_tokens)
 
     # checking for a null answer
     if answer.startswith("[CLS]") or answer == " " or answer == "":
         answer = "Unable to find the answer to your question."
     print("\nPredicted answer:\n{}".format(answer.capitalize()))
+    print("Confidence start score: " + str(start_prob) + ", end score: " + str(end_prob))
     print("For more information, please go to" + get_slide_number(original_context))
     
+    # strings of history and the full context
+    history_component = question + " " + answer
+    history.append(history_component)
+    context_str = ''.join(history) + original_context
 
-    # strings of question_history and the full context
-    question_history_str = ''.join(question_history)
-    context_str = ''.join(question_history) + original_context
-
-    # finding number of tokens in question_history and the full context
+    # finding number of tokens in history and the full context
     all_text_inputs, all_text_input_ids, all_text_text_tokens = get_tokens_helper(context_str)
 
     # checking if the length of the context tokens is over 512, since BERT has a restriction
@@ -184,8 +189,8 @@ def question_answer(question, context, question_history, map):
         # below code checks how many questions needs to be removed based on the amount of tokens over limit
         count = 0
         total_tokens = 0
-        for i in range(0, len(question_history)):
-            current_q = question_history[i].strip(' ')
+        for i in range(0, len(history)):
+            current_q = history[i].strip(' ')
             current_num = map.get(current_q)
             total_tokens += current_num
             if total_tokens < tokens_over_limit:
@@ -195,14 +200,14 @@ def question_answer(question, context, question_history, map):
                 break
 
         # removes questions from question history
-        question_history = question_history[count + 1:]
+        history = history[count + 1:]
 
-        new_truncated_history_str = ''.join(question_history)
-        new_truncated_context_with_question_history = new_truncated_history_str + original_context
-        context = new_truncated_context_with_question_history
+        new_truncated_history_str = ''.join(history)
+        new_truncated_context_with_history = new_truncated_history_str + original_context
+        context = new_truncated_context_with_history
 
     print("Current context: " + context)
-    return context, question_history, answer
+    return context, history, answer
 
 
 def test_conversation(initial_context, question_list, map):
@@ -213,21 +218,20 @@ def test_conversation(initial_context, question_list, map):
     :param map current map of question to number of tokens
     :return: nothing
     """
-    question_history = []
+    history = []
     logging_list = []
     text = initial_context
 
     for i, question in enumerate(question_list):
-        """if question + " " not in question_history:
-            question_history.append(question + " ")"""
-        question_history.append(question + " ")
-        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, question_history, map)
+        """if question + " " not in history:
+            history.append(question + " ")"""
+        # history.append(question + " ")
+        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, history, map)
         text = qa_returned_elements[0]
         current_answer = qa_returned_elements[2]
-        question_history = qa_returned_elements[1] + list(current_answer)
 
         # logging
-        logging_list.append([question, ''.join(question_history), current_answer, str(time_taken_to_answer)])
+        logging_list.append([question, ''.join(history), current_answer, str(time_taken_to_answer)])
         logging_df = pd.DataFrame(logging_list,
                                   columns=['Current Question', 'Question History', 'Predicted Answer', 'Time taken'])
         if i == 0:
@@ -244,21 +248,20 @@ def begin_conversation(initial_context, map):
     :param map current map of question to number of tokens
     :return: nothing
     """
-    question_history = []
+    history = []
     # logging_list =[]
 
     question = input("\nPlease enter your question: \n")
-    question_history.append(question + " ")
     text = initial_context
 
     while True:
         # checking the time taken by each call
-        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, question_history, map)
+        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, history, map)
         print("Time taken: " + str(time_taken_to_answer))
         current_answer = qa_returned_elements[1]
 
         """logging
-        logging_list.append([question, ''.join(question_history), current_answer, str(time_taken_to_answer)])
+        logging_list.append([question, ''.join(history), current_answer, str(time_taken_to_answer)])
         logging_df = pd.DataFrame(logging_list, columns=['Current Question', 'Question History', 'Predicted Answer', 'Time taken'])
         file_io.write_data(logging_df)
         logging_list = []"""
@@ -270,7 +273,7 @@ def begin_conversation(initial_context, map):
             response = input("\nDo you want to ask another question based on this text (Y/N)? ")
             if response[0] == "Y":
                 question = input("\nPlease enter your question: \n")
-                question_history.append(question + " ")
+                history.append(question + " ")
                 flag = False
 
             elif response[0] == "N":
