@@ -1,10 +1,11 @@
 import pandas as pd
-#import numpy as np
+# import numpy as np
 import torch
 from transformers import BertForQuestionAnswering
 from transformers import BertTokenizer
 from time import time
 import platform
+
 import file_io
 
 
@@ -136,9 +137,6 @@ def question_answer(question, context, history, map):
     # using a helper method to get tokens
     inputs, input_ids, text_tokens = get_tokens_helper(question, context)
 
-    """ Using below line to test out removing entire questions from question history """
-    map = map_question_to_num_tokens(question, map)
-
     # sending tokens to BERT model
     model_out = model(**inputs)
 
@@ -166,15 +164,19 @@ def question_answer(question, context, history, map):
     print("For more information, please go to" + get_slide_number(original_context))
     
     # strings of history and the full context
-    history_component = question + " " + answer
+    history_component = question + " " + answer + ". "
     history.append(history_component)
+
+    """ Using below line to test out removing entire q&a from history """
+    map = map_question_to_num_tokens(history_component, map)
+
     context_str = ''.join(history) + original_context
 
     # finding number of tokens in history and the full context
     all_text_inputs, all_text_input_ids, all_text_text_tokens = get_tokens_helper(context_str)
 
     # checking if the length of the context tokens is over 512, since BERT has a restriction
-    if len(all_text_text_tokens) <= BERT_TOKEN_LIMIT:
+    if len(all_text_text_tokens) < BERT_TOKEN_LIMIT:
         context = context_str
     else:
 
@@ -190,8 +192,9 @@ def question_answer(question, context, history, map):
         count = 0
         total_tokens = 0
         for i in range(0, len(history)):
-            current_q = history[i].strip(' ')
-            current_num = map.get(current_q)
+            # current_history_element = history[i].strip(' ')
+            current_history_element = history[i]
+            current_num = map.get(current_history_element)
             total_tokens += current_num
             if total_tokens < tokens_over_limit:
                 count += 1
@@ -228,6 +231,7 @@ def test_conversation(initial_context, question_list, map):
         # history.append(question + " ")
         time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, history, map)
         text = qa_returned_elements[0]
+        history = qa_returned_elements[1]
         current_answer = qa_returned_elements[2]
 
         # logging
@@ -255,10 +259,12 @@ def begin_conversation(initial_context, map):
     text = initial_context
 
     while True:
-        # checking the time taken by each call
+        # checking the timcurrent_history_element = history[i]e taken by each call
         time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, history, map)
         print("Time taken: " + str(time_taken_to_answer))
-        current_answer = qa_returned_elements[1]
+        text = qa_returned_elements[0]
+        history = qa_returned_elements[1]
+        current_answer = qa_returned_elements[2]
 
         """logging
         logging_list.append([question, ''.join(history), current_answer, str(time_taken_to_answer)])
@@ -295,21 +301,21 @@ map_qns_to_num_tokens = {}
 print("Current environment: ")
 print(platform.uname())
 
-"""
-# pick the context from dataset
-index = 11
-original_context = file_io.read_data("sample_dataset.json")["text"][index]
+
+"""# pick the context from dataset
+index = 14
+original_context = file_io.read_data("official_corpus/executing_phase_corpus.json")["text"][index]
 
 # print the initial context and start conversation
 print("The initial context: " + original_context)
-begin_conversation(original_context, map_qns_to_num_tokens)
-"""
+begin_conversation(original_context, map_qns_to_num_tokens)"""
+
 
 # use this block of code to be able to feed questions directly instead of typing each time
 # data file contains text and list of questions
 test_df = file_io.read_data('test_file_to_show.json')
 
 # for i in range(0, test_df.shape[0]):
-original_context = test_df["data"][1]["text"]
-q_list = test_df["data"][1]["questions"]
+original_context = test_df["data"][6]["text"]
+q_list = test_df["data"][6]["questions"]
 test_conversation(original_context, q_list, map_qns_to_num_tokens)
