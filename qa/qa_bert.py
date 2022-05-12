@@ -287,6 +287,18 @@ def begin_conversation(initial_context, map):
         if flag_N:
             break
 
+def inset_links(answer):
+    import re
+    ans_for_display = answer
+
+    df = pd.read_csv('map_of_hyperlinks.csv')
+
+    list = re.findall("link\d\d", ans_for_display)
+
+    for link in list:
+        hyperlink = df.loc[df['Link'] == link]['Hyperlink'].item()
+        ans_for_display = ans_for_display.replace(link, hyperlink)
+    return ans_for_display
 
 # initialize the model and the tokenizer
 model = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
