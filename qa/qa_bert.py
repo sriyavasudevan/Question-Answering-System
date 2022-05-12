@@ -5,8 +5,6 @@ from transformers import BertForQuestionAnswering
 from transformers import BertTokenizer
 from time import time
 import platform
-import file_io
-
 
 def get_time(fun, *args, **kwargs):
     """
@@ -116,10 +114,11 @@ def get_slide_number(context):
     :param context: input original context
     """
     split_content = context.split(r' ')
-    if split_content[3].isnumeric() is False:
-        slide_number = ' ' + 'Slide' + ' ' + split_content[1]
-    else:
-        slide_number = ' ' + 'Slide' + ' ' + split_content[1] + ', ' + split_content[2] + ', ' + split_content[3]
+    slide_number = ' ' + 'Slide' + ' ' + split_content[1]
+    # if split_content[3].isnumeric() is False:
+        # slide_number = ' ' + 'Slide' + ' ' + split_content[1]
+    # else:
+        # slide_number = ' ' + 'Slide' + ' ' + split_content[1] + ', ' + split_content[2] + ', ' + split_content[3]
     return slide_number
 
 

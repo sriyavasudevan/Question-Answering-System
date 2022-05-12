@@ -138,6 +138,7 @@ def question_answer(question, text):
     #     print("\nQuestion:\n{}".format(question.capitalize()))
     print("\nAnswer:\n{}".format(answer.capitalize()))
 
+
 # initialize the model and the tokenizer
 model = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 tokenizer = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
@@ -166,14 +167,16 @@ while True:
     flag_N = False
 
     while flag:
-        response = input("\nDo you want to ask another question (Y/N)? ")
+        response = input("\nDo you want to ask another question based on this text (Y/N)? ")
         if response[0] == "Y":
             question = input("\nPlease enter your question: \n")
+            # history.append(question + " ")
             flag = False
+
         elif response[0] == "N":
             print("\nBye!")
             flag = False
             flag_N = True
 
-        if flag_N:
-            break
+    if flag_N:
+        break
