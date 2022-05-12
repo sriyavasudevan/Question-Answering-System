@@ -117,10 +117,7 @@ def get_slide_number(context):
     :param context: input original context
     """
     split_content = context.split(r' ')
-    if split_content[3].isnumeric() is False:
-        slide_number = ' ' + 'Slide' + ' ' + split_content[1]
-    else:
-        slide_number = ' ' + 'Slide' + ' ' + split_content[1] + ', ' + split_content[2] + ', ' + split_content[3]
+    slide_number = ' ' + 'Slide' + ' ' + split_content[1]
     return slide_number
 
 
@@ -162,7 +159,7 @@ def question_answer(question, context, history, map):
     print("\nPredicted answer:\n{}".format(answer.capitalize()))
     print("Confidence start score: " + str(start_prob) + ", end score: " + str(end_prob))
     print("For more information, please go to" + get_slide_number(original_context))
-    
+
     # strings of history and the full context
     history_component = question + " " + answer + ". "
     history.append(history_component)
@@ -301,7 +298,6 @@ map_qns_to_num_tokens = {}
 print("Current environment: ")
 print(platform.uname())
 
-
 """# pick the context from dataset
 index = 14
 original_context = file_io.read_data("official_corpus/executing_phase_corpus.json")["text"][index]
@@ -309,7 +305,6 @@ original_context = file_io.read_data("official_corpus/executing_phase_corpus.jso
 # print the initial context and start conversation
 print("The initial context: " + original_context)
 begin_conversation(original_context, map_qns_to_num_tokens)"""
-
 
 # use this block of code to be able to feed questions directly instead of typing each time
 # data file contains text and list of questions
