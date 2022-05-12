@@ -2,6 +2,8 @@
 *.json
 *.txt
 *.csv
+*.xlsx
+*.xls
 
 #Ignore .DS_Store
 .DS_Store
