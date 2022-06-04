@@ -161,7 +161,7 @@ def question_answer(question, context, history, map):
     print("For more information, please go to" + get_slide_number(original_context))
 
     # strings of history and the full context
-    history_component = question + " " + answer + ". "
+    history_component = question + " "
     history.append(history_component)
 
     """ Using below line to test out removing entire q&a from history """
@@ -179,8 +179,6 @@ def question_answer(question, context, history, map):
 
         # tokenized version of the original plain context without question history
         original_context_t = get_tokens_helper(original_context)
-        original_context_tokens = original_context_t[2]
-        # original_context_tokens.pop(0) # removing CLS token
 
         # how many tokens are over limit
         tokens_over_limit = len(all_text_text_tokens) - BERT_TOKEN_LIMIT
@@ -323,6 +321,6 @@ begin_conversation(original_context, map_qns_to_num_tokens)"""
 test_df = file_io.read_data('test_file_to_show.json')
 
 # for i in range(0, test_df.shape[0]):
-original_context = test_df["data"][6]["text"]
-q_list = test_df["data"][6]["questions"]
+original_context = test_df["data"][8]["text"]
+q_list = test_df["data"][8]["questions"]
 test_conversation(original_context, q_list, map_qns_to_num_tokens)
