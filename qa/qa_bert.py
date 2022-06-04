@@ -321,6 +321,10 @@ print(platform.uname())
 """# pick the context from dataset
 index = 14
 original_context = file_io.read_data("official_corpus/executing_phase_corpus.json")["text"][index]
+<<<<<<< HEAD
+=======
+
+>>>>>>> 54cf9661baf651760f25ab8c016975c677ce2d18
 # print the initial context and start conversation
 print("The initial context: " + original_context)
 begin_conversation(original_context, map_qns_to_num_tokens)"""
@@ -330,6 +334,11 @@ begin_conversation(original_context, map_qns_to_num_tokens)"""
 test_df = file_io.read_data('D://test_file_to_show.json')
 
 # for i in range(0, test_df.shape[0]):
+<<<<<<< HEAD
 original_context = test_df["data"][0]["text"]
 q_list = test_df["data"][0]["questions"]
+=======
+original_context = test_df["data"][8]["text"]
+q_list = test_df["data"][8]["questions"]
+>>>>>>> 54cf9661baf651760f25ab8c016975c677ce2d18
 test_conversation(original_context, q_list, map_qns_to_num_tokens)
