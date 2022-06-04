@@ -180,3 +180,8 @@ while True:
 
     if flag_N:
         break
+© 2022 GitHub, Inc.
+Terms
+Privacy
+Security
+Statu
