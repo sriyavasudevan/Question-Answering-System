@@ -308,6 +308,28 @@ def inset_links(answer):
         ans_for_display = ans_for_display.replace(link, hyperlink)
     return ans_for_display
 
+def user_input_phase():
+    '''
+    This is the method for users to choose a topic at the beginning.
+    '''
+    
+    print('Enter 1 for Creating Phase')
+    print('Enter 2 for Formalizing Phase')
+    print('Enter 3 for Excuting Phase')
+
+    choice = int(input('Enter your choice:'))
+
+    if (choice == 1):
+      text_tf = file_io.read_data('creating_phase_corpus.json')
+    if (choice == 2):
+      text_tf = file_io.read_data('formalizing_phase_corpus.json')
+    if (choice == 3):
+      text_tf = file_io.read_data('executing_phase_corpus.json')
+
+    else:
+        print('Invalid choice')
+    return text_tf, choice
+    
 # initialize the model and the tokenizer
 model = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 tokenizer = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
@@ -318,27 +340,21 @@ map_qns_to_num_tokens = {}
 print("Current environment: ")
 print(platform.uname())
 
-"""# pick the context from dataset
-index = 14
-original_context = file_io.read_data("official_corpus/executing_phase_corpus.json")["text"][index]
-<<<<<<< HEAD
-=======
+# pick the context from dataset
+# index = 14
+# original_context = file_io.read_data("official_corpus/executing_phase_corpus.json")["text"][index]
 
->>>>>>> 54cf9661baf651760f25ab8c016975c677ce2d18
 # print the initial context and start conversation
-print("The initial context: " + original_context)
-begin_conversation(original_context, map_qns_to_num_tokens)"""
+# print("The initial context: " + original_context)
+# begin_conversation(original_context, map_qns_to_num_tokens)"""
 
 # use this block of code to be able to feed questions directly instead of typing each time
 # data file contains text and list of questions
-test_df = file_io.read_data('D://test_file_to_show.json')
+test_df = file_io.read_data('test_file_to_show.json')
 
 # for i in range(0, test_df.shape[0]):
-<<<<<<< HEAD
+
 original_context = test_df["data"][0]["text"]
 q_list = test_df["data"][0]["questions"]
-=======
-original_context = test_df["data"][8]["text"]
-q_list = test_df["data"][8]["questions"]
->>>>>>> 54cf9661baf651760f25ab8c016975c677ce2d18
+
 test_conversation(original_context, q_list, map_qns_to_num_tokens)
