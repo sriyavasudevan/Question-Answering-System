@@ -309,9 +309,9 @@ def inset_links(answer):
     return ans_for_display
 
 def user_input_phase():
-    '''
+    """
     This is the method for users to choose a topic at the beginning.
-    '''
+    """
     
     print('Enter 1 for Creating Phase')
     print('Enter 2 for Formalizing Phase')
@@ -319,11 +319,11 @@ def user_input_phase():
 
     choice = int(input('Enter your choice:'))
 
-    if (choice == 1):
+    if choice == 1:
       text_tf = file_io.read_data('creating_phase_corpus.json')
-    if (choice == 2):
+    if choice == 2:
       text_tf = file_io.read_data('formalizing_phase_corpus.json')
-    if (choice == 3):
+    if choice == 3:
       text_tf = file_io.read_data('executing_phase_corpus.json')
 
     else:
@@ -350,7 +350,7 @@ print(platform.uname())
 
 # use this block of code to be able to feed questions directly instead of typing each time
 # data file contains text and list of questions
-test_df = file_io.read_data('test_file_to_show.json')
+test_df = file_io.read_data('old/test_file_to_show.json')
 
 # for i in range(0, test_df.shape[0]):
 

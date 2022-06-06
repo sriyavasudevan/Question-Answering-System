@@ -21,7 +21,7 @@ def get_time(fun, *args, **kwargs):
     res = fun(*args, **kwargs)
     return time() - start, res
 
-
+'''
 def segment_file(file, max_file_length=450):
     """
     Separate the file to make sure max file length is under BERT limit
@@ -46,7 +46,7 @@ def segment_file(file, max_file_length=450):
             segmented_file.append(file)
 
     return segmented_file
-
+'''
 
 def get_top_k_file(question, file_df, k=2):
     """
@@ -87,7 +87,7 @@ def get_top_k_file(question, file_df, k=2):
 
     return top_file
 
-
+'''
 def question_answer(question, text):
     """
     Main method for qa system with BERT model (test)
@@ -138,12 +138,11 @@ def question_answer(question, text):
     #     print("\nQuestion:\n{}".format(question.capitalize()))
     print("\nAnswer:\n{}".format(answer.capitalize()))
 
-
 # initialize the model and the tokenizer
 model = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 tokenizer = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 # loading the text
-text_df = pd.read_json('ranker_text_file.json')
+text_df = pd.read_json('old/ranker_text_file.json')
 # set the input question
 question = input("\nPlease enter your question: \n")
 
@@ -177,11 +176,4 @@ while True:
             print("\nBye!")
             flag = False
             flag_N = True
-
-    if flag_N:
-        break
-© 2022 GitHub, Inc.
-Terms
-Privacy
-Security
-Statu
+'''
