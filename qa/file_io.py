@@ -18,7 +18,7 @@ def write_data(conversation_df, first_time=False):
     :param first_time: check if its the first time this method is called
     :return: nothing
     """
-    filename = 'conversation_log.csv'
+    filename = 'log/conversation_log.csv'
     """if os.path.isfile(filename):
         os.remove(filename)"""
     if first_time:
