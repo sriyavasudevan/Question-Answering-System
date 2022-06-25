@@ -1,10 +1,11 @@
 import pandas as pd
-#import numpy as np
+# import numpy as np
 import torch
 from transformers import BertForQuestionAnswering
 from transformers import BertTokenizer
 from time import time
 import platform
+
 import file_io
 
 
@@ -107,7 +108,8 @@ def get_confidence(start_logits, end_logits):
         else:
             confident = False
 
-    return confident
+    return confident, start_prob, end_prob
+
 
 def get_slide_number(context):
     """
@@ -115,28 +117,26 @@ def get_slide_number(context):
     :param context: input original context
     """
     split_content = context.split(r' ')
-    if split_content[3].isnumeric() is False:
-        slide_number = ' ' + 'Slide' + ' ' + split_content[1]
-    else:
-        slide_number = ' ' + 'Slide' + ' ' + split_content[1] + ', ' + split_content[2] + ', ' + split_content[3]
+    slide_number = ' ' + 'Slide' + ' ' + split_content[1]
     return slide_number
 
 
-def question_answer(question, context, question_history, map):
+def question_answer(question, context, history, map):
     """
     This is the main code for qa system - uses BERT
     :param question: current question being asked
     :param context: current context used
-    :param question_history: list of questions previously asked
+    :param history: list of questions previously asked
     :param map: current map of question to number of tokens
     :return: current context, current question history, predicted answer
     """
-
+    # checking if the question is end with a question mark
+    last_character = question[-1]
+    if last_character != "?":
+        question = question + "?" 
+    
     # using a helper method to get tokens
     inputs, input_ids, text_tokens = get_tokens_helper(question, context)
-
-    """ Using below line to test out removing entire questions from question history """
-    map = map_question_to_num_tokens(question, map)
 
     # sending tokens to BERT model
     model_out = model(**inputs)
@@ -146,37 +146,49 @@ def question_answer(question, context, question_history, map):
     answer_end = torch.argmax(model_out.end_logits)
 
     # check the confidence of the answer, returns a boolean based on threshold
-    confident = get_confidence(model_out.start_logits, model_out.end_logits)
+    confidence_components = get_confidence(model_out.start_logits, model_out.end_logits)
+    start_prob = confidence_components[1]
+    end_prob = confidence_components[2]
 
-    if not confident:
+    """if not confident:
         answer = ""
     else:
-        # using a helper method to check for the answer
-        answer = get_answer_helper(answer_start, answer_end, input_ids, text_tokens)
+        """
+    # using a helper method to check for the answer
+    answer = get_answer_helper(answer_start, answer_end, input_ids, text_tokens)
 
     # checking for a null answer
     if answer.startswith("[CLS]") or answer == " " or answer == "":
         answer = "Unable to find the answer to your question."
+        
+    # checking if there is a period at the end of the answer
+    last_answer = answer[-1]
+    if last_answer != ".":
+        answer = answer + "."
+                
     print("\nPredicted answer:\n{}".format(answer.capitalize()))
+    print("Confidence start score: " + str(start_prob) + ", end score: " + str(end_prob))
     print("For more information, please go to" + get_slide_number(original_context))
-    
 
-    # strings of question_history and the full context
-    question_history_str = ''.join(question_history)
-    context_str = ''.join(question_history) + original_context
+    # strings of history and the full context
+    history_component = question + " "
+    history.append(history_component)
 
-    # finding number of tokens in question_history and the full context
+    """ Using below line to test out removing entire q&a from history """
+    map = map_question_to_num_tokens(history_component, map)
+
+    context_str = ''.join(history) + original_context
+
+    # finding number of tokens in history and the full context
     all_text_inputs, all_text_input_ids, all_text_text_tokens = get_tokens_helper(context_str)
 
     # checking if the length of the context tokens is over 512, since BERT has a restriction
-    if len(all_text_text_tokens) <= BERT_TOKEN_LIMIT:
+    if len(all_text_text_tokens) < BERT_TOKEN_LIMIT:
         context = context_str
     else:
 
         # tokenized version of the original plain context without question history
         original_context_t = get_tokens_helper(original_context)
-        original_context_tokens = original_context_t[2]
-        # original_context_tokens.pop(0) # removing CLS token
 
         # how many tokens are over limit
         tokens_over_limit = len(all_text_text_tokens) - BERT_TOKEN_LIMIT
@@ -184,9 +196,10 @@ def question_answer(question, context, question_history, map):
         # below code checks how many questions needs to be removed based on the amount of tokens over limit
         count = 0
         total_tokens = 0
-        for i in range(0, len(question_history)):
-            current_q = question_history[i].strip(' ')
-            current_num = map.get(current_q)
+        for i in range(0, len(history)):
+            # current_history_element = history[i].strip(' ')
+            current_history_element = history[i]
+            current_num = map.get(current_history_element)
             total_tokens += current_num
             if total_tokens < tokens_over_limit:
                 count += 1
@@ -195,14 +208,14 @@ def question_answer(question, context, question_history, map):
                 break
 
         # removes questions from question history
-        question_history = question_history[count + 1:]
+        history = history[count + 1:]
 
-        new_truncated_history_str = ''.join(question_history)
-        new_truncated_context_with_question_history = new_truncated_history_str + original_context
-        context = new_truncated_context_with_question_history
+        new_truncated_history_str = ''.join(history)
+        new_truncated_context_with_history = new_truncated_history_str + original_context
+        context = new_truncated_context_with_history
 
     print("Current context: " + context)
-    return context, question_history, answer
+    return context, history, answer
 
 
 def test_conversation(initial_context, question_list, map):
@@ -213,21 +226,21 @@ def test_conversation(initial_context, question_list, map):
     :param map current map of question to number of tokens
     :return: nothing
     """
-    question_history = []
+    history = []
     logging_list = []
     text = initial_context
 
     for i, question in enumerate(question_list):
-        """if question + " " not in question_history:
-            question_history.append(question + " ")"""
-        question_history.append(question + " ")
-        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, question_history, map)
+        """if question + " " not in history:
+            history.append(question + " ")"""
+        # history.append(question + " ")
+        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, history, map)
         text = qa_returned_elements[0]
+        history = qa_returned_elements[1]
         current_answer = qa_returned_elements[2]
-        question_history = qa_returned_elements[1] + list(current_answer)
 
         # logging
-        logging_list.append([question, ''.join(question_history), current_answer, str(time_taken_to_answer)])
+        logging_list.append([question, ''.join(history), current_answer, str(time_taken_to_answer)])
         logging_df = pd.DataFrame(logging_list,
                                   columns=['Current Question', 'Question History', 'Predicted Answer', 'Time taken'])
         if i == 0:
@@ -244,21 +257,22 @@ def begin_conversation(initial_context, map):
     :param map current map of question to number of tokens
     :return: nothing
     """
-    question_history = []
+    history = []
     # logging_list =[]
 
     question = input("\nPlease enter your question: \n")
-    question_history.append(question + " ")
     text = initial_context
 
     while True:
-        # checking the time taken by each call
-        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, question_history, map)
+        # checking the timcurrent_history_element = history[i]e taken by each call
+        time_taken_to_answer, qa_returned_elements = get_time(question_answer, question, text, history, map)
         print("Time taken: " + str(time_taken_to_answer))
-        current_answer = qa_returned_elements[1]
+        text = qa_returned_elements[0]
+        history = qa_returned_elements[1]
+        current_answer = qa_returned_elements[2]
 
         """logging
-        logging_list.append([question, ''.join(question_history), current_answer, str(time_taken_to_answer)])
+        logging_list.append([question, ''.join(history), current_answer, str(time_taken_to_answer)])
         logging_df = pd.DataFrame(logging_list, columns=['Current Question', 'Question History', 'Predicted Answer', 'Time taken'])
         file_io.write_data(logging_df)
         logging_list = []"""
@@ -270,7 +284,7 @@ def begin_conversation(initial_context, map):
             response = input("\nDo you want to ask another question based on this text (Y/N)? ")
             if response[0] == "Y":
                 question = input("\nPlease enter your question: \n")
-                question_history.append(question + " ")
+                history.append(question + " ")
                 flag = False
 
             elif response[0] == "N":
@@ -281,7 +295,41 @@ def begin_conversation(initial_context, map):
         if flag_N:
             break
 
+def inset_links(answer):
+    import re
+    ans_for_display = answer
 
+    df = pd.read_csv('map_of_hyperlinks.csv')
+
+    list = re.findall("link\d\d", ans_for_display)
+
+    for link in list:
+        hyperlink = df.loc[df['Link'] == link]['Hyperlink'].item()
+        ans_for_display = ans_for_display.replace(link, hyperlink)
+    return ans_for_display
+
+def user_input_phase():
+    """
+    This is the method for users to choose a topic at the beginning.
+    """
+    
+    print('Enter 1 for Creating Phase')
+    print('Enter 2 for Formalizing Phase')
+    print('Enter 3 for Excuting Phase')
+
+    choice = int(input('Enter your choice:'))
+
+    if choice == 1:
+      text_tf = file_io.read_data('../official_corpus/creating_phase_corpus.json')
+    if choice == 2:
+      text_tf = file_io.read_data('../official_corpus/formalizing_phase_corpus.json')
+    if choice == 3:
+      text_tf = file_io.read_data('../official_corpus/executing_phase_corpus.json')
+
+    else:
+        print('Invalid choice')
+    return text_tf, choice
+    
 # initialize the model and the tokenizer
 model = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 tokenizer = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
@@ -292,21 +340,21 @@ map_qns_to_num_tokens = {}
 print("Current environment: ")
 print(platform.uname())
 
-"""
 # pick the context from dataset
-index = 11
-original_context = file_io.read_data("sample_dataset.json")["text"][index]
+# index = 14
+# original_context = file_io.read_data("official_corpus/executing_phase_corpus.json")["text"][index]
 
 # print the initial context and start conversation
-print("The initial context: " + original_context)
-begin_conversation(original_context, map_qns_to_num_tokens)
-"""
+# print("The initial context: " + original_context)
+# begin_conversation(original_context, map_qns_to_num_tokens)"""
 
 # use this block of code to be able to feed questions directly instead of typing each time
 # data file contains text and list of questions
-test_df = file_io.read_data('test_file_to_show.json')
+test_df = file_io.read_data('../old/test_file_to_show.json')
 
 # for i in range(0, test_df.shape[0]):
-original_context = test_df["data"][1]["text"]
-q_list = test_df["data"][1]["questions"]
+
+original_context = test_df["data"][0]["text"]
+q_list = test_df["data"][0]["questions"]
+
 test_conversation(original_context, q_list, map_qns_to_num_tokens)
