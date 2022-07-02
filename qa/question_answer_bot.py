@@ -1,27 +1,28 @@
-import pandas as pd
 import numpy as np
 import torch
 from transformers import BertForQuestionAnswering
 from transformers import BertTokenizer
-from time import time
 import platform
 import re
 import file_io
-from older import context_ranker
+import context_ranker
 import check_spelling_grammar
 import logging_conversation as logger
 import utils as utils
 
 
-def question_answer(question, cur_context, history, map):
+def question_answer(question, cur_context, history, map, tokenizer, model):
     """
     This is the main code for qa system - uses BERT
+    :param model:
+    :param tokenizer:
     :param question: current question being asked
     :param cur_context: current context used
     :param history: list of questions previously asked
     :param map: current map of question to number of tokens
     :return: current context, current question history, predicted answer
     """
+    BERT_TOKEN_LIMIT = 512
 
     if len(history) != 0:
         # append past questions to current context
@@ -150,7 +151,7 @@ def test_conversation(phase_df, question_list, map):
             history = []
 
         accepted_answer_index = np.argmax(np.array(confidence_candidates))
-        history.append(answer_candidates[accepted_answer_index])
+        history.append(question)
         map = map_candidates[accepted_answer_index]
 
 
@@ -189,6 +190,7 @@ def begin_conversation(map, phase_df):
             # with a quantifiable number in a question where we don't talk about
             # a slide number or where you can find something
             if "slide" not in question and "where" not in question:
+                copy_original_context = cur_context
                 cur_context = re.sub('Slide \d*', '', cur_context)
 
             time_taken_to_answer, qa_returned_elements = utils.get_time(question_answer, question, cur_context, history,
@@ -201,12 +203,6 @@ def begin_conversation(map, phase_df):
             start_prob = confidence_components[1]
             end_prob = confidence_components[2]
 
-            print("------------------------------------------------------")
-            print("\nPredicted answer:\n{}".format(current_answer.capitalize()))
-            print(f"Weighted confidence: {cscore}")
-            print("Confidence start score: " + str(start_prob) + ", end score: " + str(end_prob))
-            print("For more information, please go to" + utils.get_slide_number(cur_context))
-
             if type(cscore) is float:
                 confidence_candidates.append(cscore)
             else:
@@ -216,8 +212,13 @@ def begin_conversation(map, phase_df):
             history = []
 
         accepted_answer_index = np.argmax(np.array(confidence_candidates))
-        history.append(answer_candidates[accepted_answer_index])
+        history.append(question)
         map = map_candidates[accepted_answer_index]
+
+        print("------------------------------------------------------")
+        print("\nPredicted answer:\n{}".format(answer_candidates[accepted_answer_index].capitalize()))
+        print(f"Weighted confidence: {confidence_candidates[accepted_answer_index]}")
+        print("For more information, please go to" + utils.get_slide_number(copy_original_context))
 
         flag = True
         flag_N = False
@@ -242,7 +243,7 @@ def user_input_phase():
     """
     This is the method for users to choose a topic at the beginning.
     """
-    choices_df = file_io.read_data('official_corpus/initial_choices.json')
+    choices_df = file_io.read_data_json('official_corpus/initial_choices.json')
     print(f"Enter 1 for {choices_df['choice1'][0]}, 2 for {choices_df['choice2'][0]}, "
           f"3 for {choices_df['choice3'][0]}")
 
@@ -251,7 +252,7 @@ def user_input_phase():
     while flag:
         try:
             ch_string = "choice" + str(choice)
-            text_df = file_io.read_data(choices_df[ch_string][1])
+            text_df = file_io.read_data_json(choices_df[ch_string][1])
             flag = False
         except KeyError:
             print('Invalid choice, try again')
@@ -260,20 +261,20 @@ def user_input_phase():
     return text_df
 
 
-# initialize the model and the tokenizer
-model = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
-tokenizer = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
-BERT_TOKEN_LIMIT = 512
-map_qns_to_num_tokens = {}
+if __name__ == '__main__':
+    # initialize the model and the tokenizer
+    bert_model = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
+    bert_tokenizer = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
+    map_qns_to_num_tokens = {}
 
-# checking the current environment type
-print("Current environment: ")
-print(platform.uname())
+    # checking the current environment type
+    print("Current environment: ")
+    print(platform.uname())
 
-current_phase_df = user_input_phase()
-begin_conversation(map_qns_to_num_tokens, current_phase_df)
+    current_phase_df = user_input_phase()
+    begin_conversation(map_qns_to_num_tokens, current_phase_df, bert_tokenizer, bert_model)
 
-# test_df = file_io.read_data('official_corpus/ranker_and_qa_list.json')
+    # test_df = file_io.read_data('official_corpus/ranker_and_qa_list.json')
 
-# q_list = test_df["data"][0]["questions"]
-# test_conversation(current_phase_df, q_list, map_qns_to_num_tokens)
+    # q_list = test_df["data"][0]["questions"]
+    # test_conversation(current_phase_df, q_list, map_qns_to_num_tokens)
