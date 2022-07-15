@@ -9,7 +9,7 @@ import context_ranker
 import check_spelling_grammar
 import logging_conversation as logger
 import utils as utils
-
+import end_conversation_prompting as prompting
 
 def question_answer(question, cur_context, history, map, tokenizer, model):
     """
@@ -84,7 +84,7 @@ def question_answer(question, cur_context, history, map, tokenizer, model):
     return history, answer, map, confidence_components
 
 
-def test_conversation(phase_df, question_list, map):
+def test_conversation(phase_df, question_list, map, tokenizer, model):
     """
     Can use this method to directly pass in a list of questions instead of typing it in
     :param phase_df:
@@ -120,7 +120,7 @@ def test_conversation(phase_df, question_list, map):
                 cur_context = re.sub('Slide \d*', '', cur_context)
 
             time_taken_to_answer, qa_returned_elements = utils.get_time(question_answer, question, cur_context, history,
-                                                                        map)
+                                                                        map, tokenizer, model)
             # print("Time taken: " + str(time_taken_to_answer))
 
             confidence_components = qa_returned_elements[3]
@@ -155,7 +155,7 @@ def test_conversation(phase_df, question_list, map):
         map = map_candidates[accepted_answer_index]
 
 
-def begin_conversation(map, phase_df):
+def begin_conversation(map, phase_df, tokenizer, model, choice):
     """
     This method output instructions to begin the conversation
     :param phase_df:
@@ -194,7 +194,7 @@ def begin_conversation(map, phase_df):
                 cur_context = re.sub('Slide \d*', '', cur_context)
 
             time_taken_to_answer, qa_returned_elements = utils.get_time(question_answer, question, cur_context, history,
-                                                                        map)
+                                                                        map, tokenizer, model)
             # print("Time taken: " + str(time_taken_to_answer))
 
             confidence_components = qa_returned_elements[3]
@@ -231,7 +231,9 @@ def begin_conversation(map, phase_df):
                 flag = False
 
             elif response[0] == "N":
-                print("\nBye!")
+                c_q = prompting.yes_or_no()
+                ending, end_choice = prompting.prompting_further_info(choice, c_q)
+                prompting.prompting_answer(choice, end_choice)
                 flag = False
                 flag_N = True
 
@@ -243,22 +245,22 @@ def user_input_phase():
     """
     This is the method for users to choose a topic at the beginning.
     """
-    choices_df = file_io.read_data_json('official_corpus/initial_choices.json')
-    print(f"Enter 1 for {choices_df['choice1'][0]}, 2 for {choices_df['choice2'][0]}, "
-          f"3 for {choices_df['choice3'][0]}")
+    df = file_io.read_data_json('official_corpus/initial_choices.json')
+    print(f"Enter 1 for {df['choice1'][0]}, 2 for {df['choice2'][0]}, "
+          f"3 for {df['choice3'][0]}")
 
     choice = int(input('Enter your choice: '))
     flag = True
     while flag:
         try:
             ch_string = "choice" + str(choice)
-            text_df = file_io.read_data_json(choices_df[ch_string][1])
+            text_df = file_io.read_data_json(df[ch_string][1])
             flag = False
         except KeyError:
             print('Invalid choice, try again')
             choice = int(input('Enter your choice:'))
             flag = True
-    return text_df
+    return text_df, choice
 
 
 if __name__ == '__main__':
@@ -268,13 +270,15 @@ if __name__ == '__main__':
     map_qns_to_num_tokens = {}
 
     # checking the current environment type
-    print("Current environment: ")
-    print(platform.uname())
+    # print("Current environment: ")
+    # print(platform.uname())
 
-    current_phase_df = user_input_phase()
-    begin_conversation(map_qns_to_num_tokens, current_phase_df, bert_tokenizer, bert_model)
+    ret_comp = user_input_phase()
+    current_phase_df = ret_comp[0]
+    choice = ret_comp[1]
+    begin_conversation(map_qns_to_num_tokens, current_phase_df, bert_tokenizer, bert_model, choice)
 
     # test_df = file_io.read_data('official_corpus/ranker_and_qa_list.json')
 
     # q_list = test_df["data"][0]["questions"]
-    # test_conversation(current_phase_df, q_list, map_qns_to_num_tokens)
+    # test_conversation(current_phase_df, q_list, map_qns_to_num_tokens, bert_tokenizer, bert_model)

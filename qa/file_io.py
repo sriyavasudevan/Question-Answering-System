@@ -7,7 +7,7 @@ def read_data_json(filename):
     :param filename: name of file
     :return: dataframe
     """
-    sample_text = pd.read_json(filename)
+    sample_text = pd.read_json(filename, orient=str)
     return sample_text
 
 
