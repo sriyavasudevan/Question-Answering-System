@@ -18,9 +18,9 @@ We used a specific corpus for our task, however it can be used according to your
 
 ## Instructions
 1. Install the following - 
-- `pip install transformers`
-- `pip install happytransformer`
-- `pip install symspellpy`
+- `pip install transformers` (for BERT for QA)
+- `pip install happytransformer` (for grammar checking which uses t5 model)
+- `pip install symspellpy` (for spell checking)
 
 2. Feed your corpus as a dataframe to `current_phase_df`
 3. Use `begin_conversation` method to get started!
