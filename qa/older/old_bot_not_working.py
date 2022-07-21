@@ -230,28 +230,14 @@ def begin_conversation(map, phase_df, tokenizer, model):
                 question = input("\nPlease enter your question: \n")
                 history.append(question + " ")
                 flag = False
+
             elif response[0] == "N":
+                c_q = prompting.yes_or_no()
+                ending, end_choice = prompting.prompting_further_info(choice, c_q)
+                prompting.prompting_answer(choice, end_choice)
+                flag = False
+                flag_N = True
 
-                flag_prompt_continue = True
-
-                # for error handling
-                while flag_prompt_continue:
-                    c_q = prompting.yes_or_no()
-                    if c_q == -1:
-                        flag_prompt_continue = True
-                        flag_N = False
-                        flag = True
-                    else:
-                        ending, end_choice = prompting.prompting_further_info(choice, c_q)
-                        if end_choice == -1:
-                            flag_prompt_continue = True
-                            flag_N = False
-                            flag = True
-                        else:
-                            prompting.prompting_answer(choice, end_choice)
-                            flag = False
-                            flag_N = True
-                            flag_prompt_continue = False
             else:
                 print("Invalid choice. Please try again.")
                 flag = True
@@ -260,11 +246,12 @@ def begin_conversation(map, phase_df, tokenizer, model):
         if flag_N:
             break
 
+
 def user_input_phase():
     """
     This is the method for users to choose a topic at the beginning.
     """
-    df = file_io.read_data_json('official_corpus/initial_choices.json')
+    df = file_io.read_data_json('../official_corpus/initial_choices.json')
     print(f"Enter 1 for {df['choice1'][0]}, 2 for {df['choice2'][0]}, "
           f"3 for {df['choice3'][0]}")
 
@@ -277,7 +264,7 @@ def user_input_phase():
             flag = False
         except KeyError:
             print('Invalid choice, try again')
-            choice = int(input('Enter your choice: '))
+            choice = int(input('Enter your choice:'))
             flag = True
     return text_df, choice
 

@@ -5,8 +5,7 @@ import difflib
 import file_io as file_io
 import check_spelling_grammar as check_spelling_grammar
 import context_ranker as context_ranker
-import question_answer_bot as qa_bot
-import logging_conversation as logger
+from older import old_bot_not_working as qa_bot
 from transformers import BertForQuestionAnswering
 from transformers import BertTokenizer
 import utils as utils

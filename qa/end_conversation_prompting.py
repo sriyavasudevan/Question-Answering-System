@@ -5,25 +5,27 @@ import file_io
 
 def yes_or_no():
     """
-
+    Method to ask whether user would like to learn other learning materials
     :return:
     """
-    print('Are you interested in other learning materials?')
+    print('\nAre you interested in other learning materials?')
     answer_choice = input('Please enter Y or N: ')
-    print('\n')
     if answer_choice == 'Y' or answer_choice == 'y':
         continue_q = 1
-    else:
+    elif answer_choice == 'N' or answer_choice == 'n':
         print('Bye!')
         continue_q = 0
+    else:
+        print('Invalid choice. Please try again.')
+        continue_q = -1
     return continue_q
 
 
 def prompting_further_info(choice, continue_q):
     """
-
-    :param choice:
-    :param continue_q:
+    Prompting for choice of further questions
+    :param choice: choice # chosen by user
+    :param continue_q: whether the user has chosen to learn about other materials
     :return:
     """
     df = file_io.read_data_json('official_corpus/initial_choices.json')
@@ -42,31 +44,33 @@ def prompting_further_info(choice, continue_q):
         if choice != 3:
             print(f'Option 3: {option3_npi}')
 
-        print('\n')
         end_choice = int(input('Please enter your choice: '))
-        print('\n')
         if end_choice == 1:
-            ending = 'You are going to learn more about the ' + option1_cs + ' of ' + phs_nm[choice - 1]
+            ending = '\nYou are going to learn more about the ' + option1_cs + ' of ' + phs_nm[choice - 1]
         elif end_choice == 2:
-            ending = 'You are going to learn more about the ' + option2_cl + ' of ' + phs_nm[choice - 1]
+            ending = '\nYou are going to learn more about the ' + option2_cl + ' of ' + phs_nm[choice - 1]
         elif end_choice == 3:
-            ending = 'You are going to learn more about the ' + option3_npi + phs_nm[choice]
+            ending = '\nYou are going to learn more about the ' + option3_npi + phs_nm[choice]
         else:
-            ending = 'null'
+            end_choice = -1
+            ending = '\nInvalid choice. Please try again.'
         print(ending)
-    else:
-        ending = 'null'
+    elif continue_q == 0:
+        ending = 'Bye!'
         end_choice = 4
-    print('\n')
+    else:
+        ending = '\nInvalid choice. Please try again.'
+        end_choice = -1
+        print(ending)
     return ending, end_choice
 
 
 def prompting_answer(choice, end_choice):
     """
-
-    :param choice:
-    :param end_choice:
-    :return:
+    Print the different types of extra/learning materials
+    :param choice: the choice given by user
+    :param end_choice: the choice # of learning material by user
+    :return: nothing
     """
     df = file_io.read_data_json('official_corpus/initial_choices.json')
 
@@ -99,14 +103,12 @@ def prompting_answer(choice, end_choice):
     elif end_choice == 3:
         current = npi_l[choice - 1]
         print(textwrap.fill(current, 100))
-    else:
-        print('Thanks for your inquiry!')
-    print('\n')
+    print('\nThanks for your inquiry!')
     print('Have a nice day!')
 
 
 # give a try
-# choice1 = 3
+# choice1 = 1
 # c_q = yes_or_no()
 # ending, end_choice = prompting_further_info(choice1, c_q)
 # prompting_answer(choice1, end_choice)
