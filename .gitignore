@@ -8,6 +8,14 @@
 #Ignore .DS_Store
 .DS_Store
 
+#Ignore .idea folder
+.idea
+
+#Ignore folders
+log/
+official_corpus/
+old/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

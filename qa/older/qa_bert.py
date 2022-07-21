@@ -320,11 +320,11 @@ def user_input_phase():
     choice = int(input('Enter your choice:'))
 
     if choice == 1:
-      text_tf = file_io.read_data('../official_corpus/creating_phase_corpus.json')
+      text_tf = file_io.read_data_json('../official_corpus/creating_phase_corpus.json')
     if choice == 2:
-      text_tf = file_io.read_data('../official_corpus/formalizing_phase_corpus.json')
+      text_tf = file_io.read_data_json('../official_corpus/formalizing_phase_corpus.json')
     if choice == 3:
-      text_tf = file_io.read_data('../official_corpus/executing_phase_corpus.json')
+      text_tf = file_io.read_data_json('../official_corpus/executing_phase_corpus.json')
 
     else:
         print('Invalid choice')
@@ -350,7 +350,7 @@ print(platform.uname())
 
 # use this block of code to be able to feed questions directly instead of typing each time
 # data file contains text and list of questions
-test_df = file_io.read_data('../old/test_file_to_show.json')
+test_df = file_io.read_data_json('../old/test_file_to_show.json')
 
 # for i in range(0, test_df.shape[0]):
 
