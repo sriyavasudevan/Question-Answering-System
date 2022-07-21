@@ -23,4 +23,4 @@ We used a specific corpus for our task, however it can be used according to your
 - `pip install symspellpy` (for spell checking)
 
 2. Feed your corpus as a dataframe to `current_phase_df`
-3. Use `begin_conversation` method to get started!
+3. Use `begin_conversation` method in `question_answer_bot.py` to get started!
