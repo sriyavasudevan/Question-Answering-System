@@ -1,5 +1,5 @@
 # Question Answering System
-We built a Question Answer System using BERT Transformer. Based on our benchmark dataset that we designed for a specific task, we evaluated it at a **TBD**.
+We built a Question Answer System using BERT Transformer. Based on our benchmark dataset that we designed for a specific task, we evaluated it at a **40%** over one question bank and **28%** over the other.
 
 ## What can it do?
 1. This QA System is topic agnostic - there is no inbuilt context. Depending on the context you feed it, you can ask questions about that (there is a little bit of structure for our task listed below).
