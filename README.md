@@ -10,7 +10,7 @@ We built a Question Answer System using BERT fine tuned on SQuAD 2.0. Based on o
 
 ## Corpus used
 We used a specific corpus for our task, however it can be used according to your needs as well. The current structure is:
-- prompted to choose from 3 different corpuses
+- prompted to choose from 3 different corpi
 - all further questions based on selected corpus
 - once you decide to stop asking questions, the system prompts whether you want to learn more
 - if you decide yes, then three more choices are offerred
